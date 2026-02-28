@@ -83,29 +83,56 @@ class SmsParser {
 
   DateTime? _extractDate(String text) {
     final regex = RegExp(
-      r'\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b',
+      r'\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})|(\d{1,2})([A-Za-z]{3})(\d{2,4})\b',
     );
     final match = regex.firstMatch(text);
-    if (match != null) {
-      final dateStr = match.group(0)!;
+    if (match == null) return null;
 
-      final normalized = dateStr.replaceAll('-', '/');
-      final parts = normalized.split('/');
+    final dateStr = match.group(0)!;
 
-      if (parts.length == 3 && parts[0].length == 4) {
-        final day = int.parse(parts[2]);
-        final month = int.parse(parts[1]);
-        final year = int.parse(parts[0]);
+    // Case 1: Contains month name (e.g., 27Feb2026)
+    if (RegExp(r'[A-Za-z]').hasMatch(dateStr)) {
+      final day = int.parse(dateStr.substring(0, 2));
+      final monthStr = dateStr.substring(2, 5).toLowerCase();
+      final year = int.parse(dateStr.substring(5));
 
-        return DateTime(year, month, day);
-      } else {
-        final year = int.parse(parts[2]);
-        final month = int.parse(parts[1]);
-        final day = int.parse(parts[0]);
+      final months = {
+        'jan': 1,
+        'feb': 2,
+        'mar': 3,
+        'apr': 4,
+        'may': 5,
+        'jun': 6,
+        'jul': 7,
+        'aug': 8,
+        'sep': 9,
+        'oct': 10,
+        'nov': 11,
+        'dec': 12,
+      };
 
-        return DateTime(year, month, day);
-      }
+      final month = months[monthStr];
+      if (month == null) return null;
+
+      return DateTime(year, month, day);
     }
-    return null;
+
+    // Case 2: Slash or dash format
+    final normalized = dateStr.replaceAll('-', '/');
+    final parts = normalized.split('/');
+
+    if (parts.length != 3) return null;
+
+    if (parts[0].length == 4) {
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      return DateTime(year, month, day);
+    } else {
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      return DateTime(year, month, day);
+    }
   }
 }

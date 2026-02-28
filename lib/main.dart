@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'sb_transaction.dart';
 import 'home_page.dart';
 
@@ -15,6 +14,7 @@ Future<void> main() async {
 
   // Open Hive Box
   await Hive.openBox<SBTransaction>('sb_transactions');
+  await Hive.openBox('app_meta');
 
   runApp(const SmartBudgetApp());
 }
