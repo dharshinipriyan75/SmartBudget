@@ -26,8 +26,10 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   String _selectedView = 'Category';
 
-  String mapMerchantToCategory(String merchant) {
-    final m = merchant.toLowerCase();
+  // ← now takes SBTransaction instead of String
+  String mapMerchantToCategory(SBTransaction txn) {
+    if (txn.category != null) return txn.category!;
+    final m = txn.merchant.toLowerCase();
     if (m.contains("swiggy") || m.contains("zomato")) return "Food";
     if (m.contains("uber") || m.contains("ola")) return "Travel";
     if (m.contains("netflix") || m.contains("spotify")) return "Subscription";
@@ -39,7 +41,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Map<String, double> _getCategoryTotals(List<SBTransaction> transactions) {
     final Map<String, double> totals = {};
     for (var txn in transactions) {
-      final cat = mapMerchantToCategory(txn.merchant);
+      final cat = mapMerchantToCategory(txn); // ← pass txn not txn.merchant
       totals[cat] = (totals[cat] ?? 0) + txn.amount;
     }
     return totals;
@@ -109,7 +111,6 @@ class _ReportsPageState extends State<ReportsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Summary Cards
               Row(
                 children: [
                   _summaryCard(
@@ -129,7 +130,6 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
               const SizedBox(height: 20),
 
-              // Toggle buttons
               Row(
                 children: [
                   _toggleBtn('Category'),
@@ -139,7 +139,6 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Chart
               Card(
                 color: const Color(0xFF1B263B),
                 shape: RoundedRectangleBorder(
@@ -240,7 +239,6 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
               const SizedBox(height: 20),
 
-              // Category breakdown list
               const Text(
                 "Category Breakdown",
                 style: TextStyle(
