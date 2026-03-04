@@ -3,10 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'sb_transaction.dart';
 
-// ─────────────────────────────────────────────
-// Rule Engine Model
-// ─────────────────────────────────────────────
-
 enum SuggestionType { overBudget, nearLimit, savingsProjection, categoryTrend }
 
 class RuleSuggestion {
@@ -27,19 +23,11 @@ class RuleSuggestion {
   });
 }
 
-// ─────────────────────────────────────────────
-// DateTime helpers
-// ─────────────────────────────────────────────
-
 extension DateTimeExtras on DateTime {
   int get dayOfYear => difference(DateTime(year, 1, 1)).inDays + 1;
   bool get isLeapYear =>
       (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 }
-
-// ─────────────────────────────────────────────
-// Rule Engine Logic
-// ─────────────────────────────────────────────
 
 class BudgetRuleEngine {
   static const Map<String, int> categoryLimits = {
@@ -56,8 +44,10 @@ class BudgetRuleEngine {
 
   static int get totalBudget => categoryLimits.values.fold(0, (a, b) => a + b);
 
-  static String mapMerchantToCategory(String merchant) {
-    final m = merchant.toLowerCase();
+  // ← now takes SBTransaction instead of String
+  static String mapMerchantToCategory(SBTransaction txn) {
+    if (txn.category != null) return txn.category!;
+    final m = txn.merchant.toLowerCase();
     if (m.contains("swiggy") || m.contains("zomato")) return "Food";
     if (m.contains("uber") || m.contains("ola")) return "Travel";
     if (m.contains("netflix") || m.contains("spotify")) return "Subscription";
@@ -81,7 +71,7 @@ class BudgetRuleEngine {
 
     final Map<String, double> categorySpent = {};
     for (var txn in filtered) {
-      final cat = mapMerchantToCategory(txn.merchant);
+      final cat = mapMerchantToCategory(txn); // ← pass txn not txn.merchant
       categorySpent[cat] = (categorySpent[cat] ?? 0) + txn.amount;
     }
 
@@ -244,10 +234,6 @@ class BudgetRuleEngine {
   }
 }
 
-// ─────────────────────────────────────────────
-// Suggestions Page UI (no Scaffold — lives inside HomePage)
-// ─────────────────────────────────────────────
-
 class SuggestionsPage extends StatefulWidget {
   const SuggestionsPage({super.key});
 
@@ -276,7 +262,6 @@ class _SuggestionsPageState extends State<SuggestionsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Period toggle ──
               Row(
                 children: [
                   const Text(
@@ -299,7 +284,6 @@ class _SuggestionsPageState extends State<SuggestionsPage> {
               ),
               const SizedBox(height: 20),
 
-              // ── Savings target slider ──
               Card(
                 color: const Color(0xFF1B263B),
                 shape: RoundedRectangleBorder(
@@ -373,7 +357,6 @@ class _SuggestionsPageState extends State<SuggestionsPage> {
               ),
               const SizedBox(height: 20),
 
-              // ── Suggestion cards ──
               if (suggestions.isEmpty)
                 const Center(
                   child: Text(
