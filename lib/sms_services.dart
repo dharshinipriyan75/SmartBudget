@@ -11,40 +11,44 @@ class SmsService {
 
   Future<void> fetchAndStoreTransactions() async {
     var status = await Permission.sms.request();
-
-    print("SMS Permission : $status");
-
     if (!status.isGranted) return;
 
+    final metaBox = Hive.box('app_meta');
+    final transactionBox = Hive.box<SBTransaction>('sb_transactions');
+    final lastScan = metaBox.get('lastScan', defaultValue: 0);
+
     final messages = await telephony.getInboxSms(
-      columns: [SmsColumn.BODY],
-      sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
+      columns: [SmsColumn.BODY, SmsColumn.DATE, SmsColumn.ID],
+      sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.ASC)],
     );
 
     print("Messages Found: ${messages.length}");
-
+    int newestTimestamp = lastScan;
     final box = Hive.box<SBTransaction>('sb_transactions');
 
     for (var msg in messages) {
-      if (msg.body == null) continue;
+      if (msg.body == null || msg.date == null) continue;
 
       final transaction = _parser.parse(msg.body!);
-      if (transaction == null) {
-        continue;
-      }
-      final exists = box.values.any((txn) => txn.id == msg.id);
+      if (transaction != null) {
+        final exists = transactionBox.values.any((txn) => txn.id == msg.id);
 
-      if (!exists) {
-        final newTxn = SBTransaction(
-          id: msg.id ?? 0,
-          amount: transaction.amount,
-          merchant: transaction.merchant,
-          timestamp: DateTime.fromMillisecondsSinceEpoch(msg.date ?? 0),
-          type: transaction.type,
-        );
+        if (!exists) {
+          transactionBox.add(
+            SBTransaction(
+              id: msg.id ?? 0,
+              amount: transaction.amount,
+              merchant: transaction.merchant,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(msg.date!),
+              type: transaction.type,
+            ),
+          );
+        }
+        if (msg.date! > newestTimestamp) {
+          newestTimestamp = msg.date!;
+        }
 
-        box.add(newTxn);
-        print("Stored new transaction: ${newTxn.amount}");
+        await metaBox.put('lastScan', newestTimestamp);
       }
     }
   }
