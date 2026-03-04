@@ -19,11 +19,15 @@ class SBTransaction extends HiveObject {
   @HiveField(4)
   final String type;
 
+  @HiveField(5)
+  String? category; // ← new nullable field
+
   SBTransaction({
     required this.id,
     required this.amount,
     required this.merchant,
     required this.timestamp,
     required this.type,
+    this.category,
   });
 }
