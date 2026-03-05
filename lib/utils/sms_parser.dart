@@ -1,4 +1,4 @@
-import 'sb_transaction.dart';
+import '../models/sb_transaction.dart';
 
 class SmsParser {
   SBTransaction? parse(String body) {

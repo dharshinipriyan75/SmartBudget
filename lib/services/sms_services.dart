@@ -2,8 +2,8 @@ import 'package:telephony/telephony.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:hive/hive.dart';
 
-import 'sb_transaction.dart';
-import '../sms_parser.dart';
+import '../models/sb_transaction.dart';
+import '../utils/sms_parser.dart';
 
 class SmsService {
   final Telephony telephony = Telephony.instance;
