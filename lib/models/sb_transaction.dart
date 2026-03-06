@@ -8,7 +8,7 @@ class SBTransaction extends HiveObject {
   final int id;
 
   @HiveField(1)
-  final double amount;
+  double amount;
 
   @HiveField(2)
   final String merchant;

@@ -6,9 +6,9 @@ import '../models/sb_transaction.dart';
 import '../services/sms_services.dart';
 import 'reports_page.dart';
 import 'suggestions_page.dart';
-import '../models/category_model.dart';              // ← NEW
-import '../services/category_service.dart';          // ← NEW
-import 'manage_categories_screen.dart';   // ← NEW
+import '../models/category_model.dart'; // ← NEW
+import '../services/category_service.dart'; // ← NEW
+import 'manage_categories_screen.dart'; // ← NEW
 
 class Expenses {
   String category;
@@ -25,6 +25,97 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+
+  void showCategoryTransactions(String category) {
+    final box = Hive.box<SBTransaction>('sb_transactions');
+
+    void showEditTransactionDialog(SBTransaction txn) {
+      final controller = TextEditingController(
+        text: txn.amount.toStringAsFixed(0),
+      );
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1B263B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              "Edit Expense",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "Amount",
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            actions: [
+              TextButton(
+                child: const Text("Cancel"),
+                onPressed: () => Navigator.pop(context),
+              ),
+              ElevatedButton(
+                child: const Text("Save"),
+                onPressed: () async {
+                  final newAmount = double.tryParse(controller.text);
+                  if (newAmount != null) {
+                    txn.amount = newAmount;
+                    await txn.save();
+                  }
+                  if (mounted) Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    final txns = box.values
+        .where((txn) => mapMerchantToCategory(txn) == category)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1B263B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: txns.length,
+          itemBuilder: (context, index) {
+            final txn = txns[index];
+
+            return Card(
+              color: const Color(0xFF1E2A38),
+              child: ListTile(
+                title: Text(
+                  txn.merchant,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  "₹${txn.amount.toInt()}",
+                  style: const TextStyle(color: Color(0xFF9FB3C8)),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                  onPressed: () => showEditTransactionDialog(txn),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   final TextEditingController amountController = TextEditingController();
 
@@ -74,7 +165,8 @@ class _HomePageState extends State<HomePage> {
             return AlertDialog(
               backgroundColor: const Color(0xFF1B263B),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+                borderRadius: BorderRadius.circular(18),
+              ),
               title: const Text(
                 "Add Expense",
                 style: TextStyle(color: Colors.white),
@@ -96,9 +188,7 @@ class _HomePageState extends State<HomePage> {
                   ValueListenableBuilder(
                     valueListenable: CategoryService.getBox().listenable(),
                     builder: (_, Box<CategoryModel> box, __) {
-                      final catNames = box.values
-                          .map((c) => c.name)
-                          .toList()
+                      final catNames = box.values.map((c) => c.name).toList()
                         ..sort();
                       if (catNames.isNotEmpty &&
                           !catNames.contains(selectedCategory)) {
@@ -110,11 +200,16 @@ class _HomePageState extends State<HomePage> {
                             : (catNames.isNotEmpty ? catNames.first : null),
                         dropdownColor: const Color(0xFF1B263B),
                         style: const TextStyle(color: Colors.white),
-                        decoration:
-                            const InputDecoration(labelText: "Category"),
+                        decoration: const InputDecoration(
+                          labelText: "Category",
+                        ),
                         items: catNames
-                            .map((cat) => DropdownMenuItem(
-                                value: cat, child: Text(cat)))
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -129,8 +224,10 @@ class _HomePageState extends State<HomePage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel",
-                      style: TextStyle(color: Colors.white54)),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -151,8 +248,9 @@ class _HomePageState extends State<HomePage> {
                     if (mounted) Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white),
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text("Save"),
                 ),
               ],
@@ -173,8 +271,8 @@ class _HomePageState extends State<HomePage> {
     if (miscTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text("No miscellaneous transactions to categorise!")),
+          content: Text("No miscellaneous transactions to categorise!"),
+        ),
       );
       return;
     }
@@ -184,7 +282,8 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       backgroundColor: const Color(0xFF1B263B),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -201,9 +300,10 @@ class _HomePageState extends State<HomePage> {
                       const Text(
                         "Categorise Miscellaneous",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Expanded(
@@ -214,8 +314,7 @@ class _HomePageState extends State<HomePage> {
                             final txn = miscTransactions[index];
                             return Card(
                               color: const Color(0xFF1E2A38),
-                              margin:
-                                  const EdgeInsets.symmetric(vertical: 6),
+                              margin: const EdgeInsets.symmetric(vertical: 6),
                               child: Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: Row(
@@ -225,56 +324,66 @@ class _HomePageState extends State<HomePage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(txn.merchant,
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.bold)),
-                                          Text("₹${txn.amount.toInt()}",
-                                              style: const TextStyle(
-                                                  color: Color(0xFF9FB3C8),
-                                                  fontSize: 12)),
+                                          Text(
+                                            txn.merchant,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            "₹${txn.amount.toInt()}",
+                                            style: const TextStyle(
+                                              color: Color(0xFF9FB3C8),
+                                              fontSize: 12,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     // ── Dynamic category dropdown ──────────
                                     ValueListenableBuilder(
-                                      valueListenable:
-                                          CategoryService.getBox()
-                                              .listenable(),
-                                      builder: (_, Box<CategoryModel> catBox,
-                                          __) {
-                                        final catNames = catBox.values
-                                            .map((c) => c.name)
-                                            .toList()
-                                          ..sort();
-                                        final current =
-                                            txn.category ?? "Miscellaneous";
-                                        return DropdownButton<String>(
-                                          value: catNames.contains(current)
-                                              ? current
-                                              : (catNames.isNotEmpty
-                                                  ? catNames.first
-                                                  : null),
-                                          dropdownColor:
-                                              const Color(0xFF1B263B),
-                                          style: const TextStyle(
-                                              color: Colors.white),
-                                          items: catNames
-                                              .map((cat) => DropdownMenuItem(
-                                                  value: cat,
-                                                  child: Text(cat)))
-                                              .toList(),
-                                          onChanged: (selected) async {
-                                            if (selected != null) {
-                                              txn.category = selected;
-                                              await txn.save();
-                                              setSheetState(() {});
-                                              setState(() {});
-                                            }
+                                      valueListenable: CategoryService.getBox()
+                                          .listenable(),
+                                      builder:
+                                          (_, Box<CategoryModel> catBox, __) {
+                                            final catNames =
+                                                catBox.values
+                                                    .map((c) => c.name)
+                                                    .toList()
+                                                  ..sort();
+                                            final current =
+                                                txn.category ?? "Miscellaneous";
+                                            return DropdownButton<String>(
+                                              value: catNames.contains(current)
+                                                  ? current
+                                                  : (catNames.isNotEmpty
+                                                        ? catNames.first
+                                                        : null),
+                                              dropdownColor: const Color(
+                                                0xFF1B263B,
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                              items: catNames
+                                                  .map(
+                                                    (cat) => DropdownMenuItem(
+                                                      value: cat,
+                                                      child: Text(cat),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              onChanged: (selected) async {
+                                                if (selected != null) {
+                                                  txn.category = selected;
+                                                  await txn.save();
+                                                  setSheetState(() {});
+                                                  setState(() {});
+                                                }
+                                              },
+                                            );
                                           },
-                                        );
-                                      },
                                     ),
                                   ],
                                 ),
@@ -300,7 +409,7 @@ class _HomePageState extends State<HomePage> {
       valueListenable: CategoryService.getBox().listenable(),
       builder: (context, Box<CategoryModel> catBox, _) {
         final categoryLimits = {
-          for (final c in catBox.values) c.name: c.spendingLimit
+          for (final c in catBox.values) c.name: c.spendingLimit,
         };
 
         return Column(
@@ -313,16 +422,16 @@ class _HomePageState extends State<HomePage> {
                 color: const Color(0xFF1B263B),
                 elevation: 15.0,
                 child: ValueListenableBuilder(
-                  valueListenable:
-                      Hive.box<SBTransaction>('sb_transactions').listenable(),
+                  valueListenable: Hive.box<SBTransaction>(
+                    'sb_transactions',
+                  ).listenable(),
                   builder: (context, Box<SBTransaction> box, _) {
                     final transactions = box.values.toList();
                     Map<String, int> categoryTotals = {};
                     for (var txn in transactions) {
                       final category = mapMerchantToCategory(txn);
                       categoryTotals[category] =
-                          (categoryTotals[category] ?? 0) +
-                              txn.amount.toInt();
+                          (categoryTotals[category] ?? 0) + txn.amount.toInt();
                     }
                     final chartData = categoryTotals.entries
                         .map((e) => Expenses(e.key, e.value))
@@ -333,7 +442,9 @@ class _HomePageState extends State<HomePage> {
                         const Text(
                           "Total Expenses Spent",
                           style: TextStyle(
-                              fontSize: 26, color: Color(0xFFE0E1DD)),
+                            fontSize: 26,
+                            color: Color(0xFFE0E1DD),
+                          ),
                         ),
                         SfCircularChart(
                           legend: const Legend(
@@ -364,12 +475,15 @@ class _HomePageState extends State<HomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Remaining Budget",
-                  style: TextStyle(
+                Expanded(
+                  child: const Text(
+                    "Remaining Budget",
+                    style: TextStyle(
                       color: Color(0xFFE0E1DD),
                       fontSize: 25,
-                      fontWeight: FontWeight.bold),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 Row(
                   children: [
@@ -409,8 +523,9 @@ class _HomePageState extends State<HomePage> {
             SizedBox(
               height: 300,
               child: ValueListenableBuilder(
-                valueListenable:
-                    Hive.box<SBTransaction>('sb_transactions').listenable(),
+                valueListenable: Hive.box<SBTransaction>(
+                  'sb_transactions',
+                ).listenable(),
                 builder: (context, Box<SBTransaction> box, _) {
                   return GridView.count(
                     scrollDirection: Axis.horizontal,
@@ -426,23 +541,47 @@ class _HomePageState extends State<HomePage> {
                       return Card(
                         color: const Color(0xFF1E2A38),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(category,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15)),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      category,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      size: 18,
+                                      color: Colors.white54,
+                                    ),
+                                    onPressed: () =>
+                                        showCategoryTransactions(category),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 6),
-                              Text("₹$spent / ₹$total",
-                                  style: const TextStyle(
-                                      color: Color(0xFF9FB3C8),
-                                      fontSize: 12)),
+                              Text(
+                                "₹$spent / ₹$total",
+                                style: const TextStyle(
+                                  color: Color(0xFF9FB3C8),
+                                  fontSize: 12,
+                                ),
+                              ),
                               const SizedBox(height: 10),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
@@ -459,17 +598,16 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                isOver
-                                    ? "₹${spent - total} over budget!"
-                                    : "",
+                                isOver ? "₹${spent - total} over budget!" : "",
                                 style: TextStyle(
-                                    color: isOver
-                                        ? Colors.redAccent
-                                        : const Color(0xFF9FB3C8),
-                                    fontSize: 12,
-                                    fontWeight: isOver
-                                        ? FontWeight.bold
-                                        : FontWeight.normal),
+                                  color: isOver
+                                      ? Colors.redAccent
+                                      : const Color(0xFF9FB3C8),
+                                  fontSize: 12,
+                                  fontWeight: isOver
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
                               ),
                             ],
                           ),
@@ -494,8 +632,10 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFF0A192F),
       appBar: AppBar(
         backgroundColor: const Color(0xFF102A43),
-        title: Text(titles[_currentIndex],
-            style: const TextStyle(color: Colors.white)),
+        title: Text(
+          titles[_currentIndex],
+          style: const TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
       ),
       floatingActionButton: _currentIndex == 0
@@ -513,18 +653,24 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.white38,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard), label: "Dashboard"),
+            icon: Icon(Icons.dashboard),
+            label: "Dashboard",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: "Reports"),
+            icon: Icon(Icons.bar_chart),
+            label: "Reports",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.lightbulb_outline), label: "Suggestions"),
+            icon: Icon(Icons.lightbulb_outline),
+            label: "Suggestions",
+          ),
         ],
       ),
       body: switch (_currentIndex) {
         0 => SingleChildScrollView(
-            padding: const EdgeInsets.all(12),
-            child: _buildDashboard(),
-          ),
+          padding: const EdgeInsets.all(12),
+          child: _buildDashboard(),
+        ),
         1 => const ReportsPage(),
         2 => const SuggestionsPage(),
         _ => const SizedBox.shrink(),
